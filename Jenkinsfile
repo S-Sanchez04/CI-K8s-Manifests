@@ -22,7 +22,7 @@ pipeline {
                     if (changes == '') {
                         echo "No hubo cambios en api-deployment.yaml, terminando el pipeline."
                         currentBuild.result = 'SUCCESS'
-                        exit 0
+                        return 
                     } else {
                         echo "api-deployment.yaml ha cambiado, continuando con el pipeline..."
                     }
