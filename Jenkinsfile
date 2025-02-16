@@ -19,7 +19,7 @@ pipeline {
             steps {
                 script {
                     def nuevoTag = sh(
-                        script: "grep 'image:' deployment.yaml | awk -F ':' '{print \$3}'",
+                        script: "grep 'image:' api-deployment.yaml | awk -F ':' '{print \$3}'",
                         returnStdout: true
                     ).trim()
                     env.NEW_IMAGE_TAG = nuevoTag
