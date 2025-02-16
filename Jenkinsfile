@@ -12,21 +12,43 @@ pipeline {
     stages {
         stage('Clonar repo de manifiestos') {
             steps {
-                git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/S-Sanchez04/CI-K8s-Manifests.git'
+                // Ensure a full clone (remove shallow clone)
+                checkout([$class: 'GitSCM',
+                    branches: [[name: 'main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'CloneOption', depth: 0, noTags: false, shallow: false]],
+                    userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/S-Sanchez04/CI-K8s-Manifests.git']]
+                ])
             }
         }
 
         stage('Verificar si api-deployment.yaml cambió') {
             steps {
                 script {
+                    // Option 1: Using git diff limited to the file
                     def changes = sh(
-                        script: "git diff --name-only HEAD~1 HEAD | grep 'k8s/api-deployment.yaml' || true", 
+                        script: "git diff --name-only HEAD~1 HEAD -- k8s/api-deployment.yaml",
                         returnStdout: true
                     ).trim()
+                    
+                    // Option 2: Alternatively, use Jenkins changeSets:
+                    // def fileChanged = false
+                    // for (changeLog in currentBuild.changeSets) {
+                    //     for (entry in changeLog.items) {
+                    //         for (file in entry.affectedFiles) {
+                    //             if (file.path == 'k8s/api-deployment.yaml') {
+                    //                 fileChanged = true
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    // def changes = fileChanged ? "changed" : ""
 
                     if (changes == '') {
                         echo "No hubo cambios en api-deployment.yaml, terminando el pipeline."
-                        env.HAS_CHANGES = "false"
+                        currentBuild.result = 'SUCCESS'
+                        // Exit the pipeline early
+                        return
                     } else {
                         echo "api-deployment.yaml ha cambiado, continuando con el pipeline..."
                         env.HAS_CHANGES = "true"
@@ -58,11 +80,9 @@ pipeline {
             steps {
                 script {
                     sh "helm create ${CHART_DIR}"
-
-                    // Actualiza values.yaml con el nuevo tag
+                    // Update values.yaml with the new tag
                     sh "sed -i 's/tag:.*/tag: \"${env.NEW_IMAGE_TAG}\"/' ${CHART_DIR}/values.yaml"
-
-                    // Actualiza la versión del Chart
+                    // Update the Chart version
                     sh "sed -i 's/version:.*/version: \"1.0.${BUILD_NUMBER}\"/' ${CHART_DIR}/Chart.yaml"
                 }
             }
