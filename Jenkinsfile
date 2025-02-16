@@ -52,10 +52,14 @@ pipeline {
                     script {
                         sh """
                             rm -rf helm-repo
-                            git clone ${GIT_REPO} helm-repo
+                            # Clone using the token for authentication
+                            git clone https://${GITHUB_TOKEN}@github.com/S-Sanchez04/helm-repo.git helm-repo
                             mv ${CHART_DIR}-*.tgz helm-repo/
                             cd helm-repo
                             helm repo index .
+                            # Configure Git user info if not already set
+                            git config user.email "jenkins@example.com"
+                            git config user.name "Jenkins"
                             git add .
                             git commit -m 'Agregando nueva versión de ${APP_NAME}'
                             git push origin main
@@ -64,6 +68,7 @@ pipeline {
                 }
             }
         }
+
 
     }
 }
