@@ -11,7 +11,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the current repository; assumes the deployment file is in the root directory.
                 checkout scm
             }
         }
@@ -19,10 +18,8 @@ pipeline {
         stage('Obtener nuevo tag de la imagen') {
             steps {
                 script {
-                    // Extract the tag from the deployment file.
-                    // Expected format in deployment.yaml: image: ssanchez04/ci-jenkins:1.5
                     def nuevoTag = sh(
-                        script: "grep 'image:' api-deployment.yaml | awk -F ':' '{print \$3}'",
+                        script: "grep 'image:' deployment.yaml | awk -F ':' '{print \$3}'",
                         returnStdout: true
                     ).trim()
                     env.NEW_IMAGE_TAG = nuevoTag
@@ -34,13 +31,8 @@ pipeline {
         stage('Generar Helm Chart') {
             steps {
                 script {
-                    // Create a new Helm chart
                     sh "helm create ${CHART_DIR}"
-                    
-                    // Update values.yaml with the new image tag
                     sh "sed -i 's/tag:.*/tag: \"${env.NEW_IMAGE_TAG}\"/' ${CHART_DIR}/values.yaml"
-                    
-                    // Update Chart version using the Jenkins BUILD_NUMBER
                     sh "sed -i 's/version:.*/version: \"1.0.${BUILD_NUMBER}\"/' ${CHART_DIR}/Chart.yaml"
                 }
             }
@@ -49,7 +41,6 @@ pipeline {
         stage('Empaquetar Chart') {
             steps {
                 script {
-                    // Package the Helm chart
                     sh "helm package ${CHART_DIR}"
                 }
             }
@@ -61,7 +52,7 @@ pipeline {
                     script {
                         sh """
                             git clone ${GIT_REPO} helm-repo
-                            mv ${APP_NAME}-*.tgz helm-repo/
+                            mv ${CHART_DIR}-*.tgz helm-repo/
                             cd helm-repo
                             helm repo index .
                             git add .
