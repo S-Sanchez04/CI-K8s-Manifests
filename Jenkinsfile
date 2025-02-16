@@ -2,10 +2,11 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "ci-jenkins"
-        CHART_DIR = "helm-charts"
-        REPO_URL = "https://S-Sanchez04.github.io/helm-repo"
-        GIT_REPO = "https://github.com/S-Sanchez04/helm-repo.git"
+        APP_NAME   = "ci-jenkins"
+        CHART_DIR  = "helm-charts"
+        REPO_URL   = "https://S-Sanchez04.github.io/helm-repo"
+        GIT_REPO   = "https://github.com/S-Sanchez04/helm-repo.git"
+        HAS_CHANGES = "false"  // flag to track if the deployment file changed
     }
 
     stages {
@@ -18,22 +19,32 @@ pipeline {
         stage('Verificar si api-deployment.yaml cambió') {
             steps {
                 script {
-                    def changes = sh(script: "git diff --name-only HEAD~1 HEAD | grep 'k8s/api-deployment.yaml' || true", returnStdout: true).trim()
+                    def changes = sh(
+                        script: "git diff --name-only HEAD~1 HEAD | grep 'k8s/api-deployment.yaml' || true", 
+                        returnStdout: true
+                    ).trim()
+
                     if (changes == '') {
                         echo "No hubo cambios en api-deployment.yaml, terminando el pipeline."
-                        currentBuild.result = 'SUCCESS'
-                        return 
+                        env.HAS_CHANGES = "false"
                     } else {
                         echo "api-deployment.yaml ha cambiado, continuando con el pipeline..."
+                        env.HAS_CHANGES = "true"
                     }
                 }
             }
         }
 
         stage('Obtener nuevo tag de la imagen') {
+            when {
+                expression { env.HAS_CHANGES == "true" }
+            }
             steps {
                 script {
-                    def nuevoTag = sh(script: "grep 'image:' k8s/api-deployment.yaml | awk -F ':' '{print \$3}'", returnStdout: true).trim()
+                    def nuevoTag = sh(
+                        script: "grep 'image:' k8s/api-deployment.yaml | awk -F ':' '{print \$3}'",
+                        returnStdout: true
+                    ).trim()
                     env.NEW_IMAGE_TAG = nuevoTag
                     echo "Nuevo tag de la imagen: ${env.NEW_IMAGE_TAG}"
                 }
@@ -41,20 +52,26 @@ pipeline {
         }
 
         stage('Generar Helm Chart') {
+            when {
+                expression { env.HAS_CHANGES == "true" }
+            }
             steps {
                 script {
                     sh "helm create ${CHART_DIR}"
 
-                    // Modificar values.yaml con el nuevo tag
+                    // Actualiza values.yaml con el nuevo tag
                     sh "sed -i 's/tag:.*/tag: \"${env.NEW_IMAGE_TAG}\"/' ${CHART_DIR}/values.yaml"
 
-                    // Modificar la versión del Chart
+                    // Actualiza la versión del Chart
                     sh "sed -i 's/version:.*/version: \"1.0.${BUILD_NUMBER}\"/' ${CHART_DIR}/Chart.yaml"
                 }
             }
         }
 
         stage('Empaquetar Chart') {
+            when {
+                expression { env.HAS_CHANGES == "true" }
+            }
             steps {
                 script {
                     sh "helm package ${CHART_DIR}"
@@ -63,6 +80,9 @@ pipeline {
         }
 
         stage('Subir Chart al Repositorio') {
+            when {
+                expression { env.HAS_CHANGES == "true" }
+            }
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     script {
