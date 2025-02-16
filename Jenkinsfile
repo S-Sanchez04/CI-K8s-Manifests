@@ -22,7 +22,7 @@ pipeline {
                     // Extract the tag from the deployment file.
                     // Expected format in deployment.yaml: image: ssanchez04/ci-jenkins:1.5
                     def nuevoTag = sh(
-                        script: "grep 'image:' deployment.yaml | awk -F ':' '{print \$3}'",
+                        script: "grep 'image:' api-deployment.yaml | awk -F ':' '{print \$3}'",
                         returnStdout: true
                     ).trim()
                     env.NEW_IMAGE_TAG = nuevoTag
