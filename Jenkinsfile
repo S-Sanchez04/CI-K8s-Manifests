@@ -51,6 +51,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                     script {
                         sh """
+                            rm -rf helm-repo
                             git clone ${GIT_REPO} helm-repo
                             mv ${CHART_DIR}-*.tgz helm-repo/
                             cd helm-repo
@@ -63,5 +64,6 @@ pipeline {
                 }
             }
         }
+
     }
 }
