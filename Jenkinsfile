@@ -9,24 +9,20 @@ pipeline {
     }
 
     stages {
-        stage('Clonar repo de manifiestos') {
+        stage('Checkout') {
             steps {
-                // Use a full clone so that history is available if needed
-                checkout([$class: 'GitSCM',
-                    branches: [[name: 'main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'CloneOption', depth: 0, noTags: false, shallow: false]],
-                    userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/S-Sanchez04/CI-K8s-Manifests.git']]
-                ])
+                // Checkout the current repository; assumes the deployment file is in the root directory.
+                checkout scm
             }
         }
 
         stage('Obtener nuevo tag de la imagen') {
             steps {
                 script {
-                    // Extract the tag from the deployment file (assuming format: image: <repo>:<tag>)
+                    // Extract the tag from the deployment file.
+                    // Expected format in deployment.yaml: image: ssanchez04/ci-jenkins:1.5
                     def nuevoTag = sh(
-                        script: "grep 'image:' k8s/api-deployment.yaml | awk -F ':' '{print \$3}'",
+                        script: "grep 'image:' deployment.yaml | awk -F ':' '{print \$3}'",
                         returnStdout: true
                     ).trim()
                     env.NEW_IMAGE_TAG = nuevoTag
