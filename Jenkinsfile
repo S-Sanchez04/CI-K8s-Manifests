@@ -26,23 +26,22 @@ pipeline {
             steps {
                 script {
                     // Option 1: Using git diff limited to the file
-                    def changes = sh(
-                        script: "git diff --name-only HEAD~1 HEAD -- k8s/api-deployment.yaml",
-                        returnStdout: true
-                    ).trim()
+                    // def changes = sh(
+                    //     script: "git diff --name-only HEAD~1 HEAD -- k8s/api-deployment.yaml",
+                    //     returnStdout: true
+                    // ).trim()
                     
-                    // Option 2: Alternatively, use Jenkins changeSets:
-                    // def fileChanged = false
-                    // for (changeLog in currentBuild.changeSets) {
-                    //     for (entry in changeLog.items) {
-                    //         for (file in entry.affectedFiles) {
-                    //             if (file.path == 'k8s/api-deployment.yaml') {
-                    //                 fileChanged = true
-                    //             }
-                    //         }
-                    //     }
-                    // }
-                    // def changes = fileChanged ? "changed" : ""
+                    def fileChanged = false
+                    for (changeLog in currentBuild.changeSets) {
+                        for (entry in changeLog.items) {
+                            for (file in entry.affectedFiles) {
+                                if (file.path == 'k8s/api-deployment.yaml') {
+                                    fileChanged = true
+                                }
+                            }
+                        }
+                    }
+                    def changes = fileChanged ? "changed" : ""
 
                     if (changes == '') {
                         echo "No hubo cambios en api-deployment.yaml, terminando el pipeline."
