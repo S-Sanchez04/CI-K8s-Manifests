@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ssanchez04/ci-jenkins:1.6
+          image: ssanchez04/ci-jenkins:1.14
           ports:
             - containerPort: 8000
           resources:
